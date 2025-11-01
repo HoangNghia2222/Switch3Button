@@ -112,7 +112,9 @@
     }
   });
 
-const btn_sw1 = document.getElementById('btn-sw1'); 
+const btn_sw1 = document.getElementById('btn-sw1');
+const btn_sw2 = document.getElementById('btn-sw2'); 
+const btn_sw3 = document.getElementById('btn-sw3'); 
 let configLed = null, newStatusLed = null, actions = []; 
 const eraWidget = new EraWidget();
     eraWidget.init({
@@ -166,8 +168,23 @@ function updateSwitch(state) {
                 eraWidget.triggerAction(actions[0]?.action, null); /* Kích hoạt hành động 'Bật' */
             }
         });
+  btn_sw2.addEventListener('click', () => {
+            if (newStatusLed === 1) {
+                eraWidget.triggerAction(actions[0]?.action, null); /* Kích hoạt hành động 'Bat' */
+            } else {
+                eraWidget.triggerAction(actions[1]?.action, null); /* Kích hoạt hành động 'Tat' */
+            }
+        });
+  btn_sw3.addEventListener('click', () => {
+            if (newStatusLed === 1) {
+                eraWidget.triggerAction(actions[1]?.action, null); /* Kích hoạt hành động 'Tắt' */
+            } else {
+                eraWidget.triggerAction(actions[0]?.action, null); /* Kích hoạt hành động 'Bật' */
+            }
+        });
   
 </script>
 </body>
 </html>
+
 
