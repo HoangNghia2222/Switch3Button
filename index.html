@@ -112,93 +112,58 @@
     }
   });
 
-// Thay thế biến đơn:
-// let configLed = null, newStatusLed = null, actions = [];
-
-// Bằng các biến để lưu cấu hình, trạng thái và hành động cho từng switch
-const switchConfigs = {}; // Lưu config cho sw1, sw2, sw3
-const switchStates = { sw1: null, sw2: null, sw3: null }; // Lưu trạng thái hiện tại (0/1)
-const switchActions = {}; // Lưu actions (Bật/Tắt) cho từng switch (nếu có)
-
-// --- Khởi tạo EraWidget ---
+const btn_sw1 = document.getElementById('btn-sw1'); 
+let configLed = null, newStatusLed = null, actions = []; 
 const eraWidget = new EraWidget();
-eraWidget.init({
-    needRealtimeConfigs: true,
-    needHistoryConfigs: true,
-    needActions: true,
-    maxRealtimeConfigsCount: 3, // Cần 3 để lấy trạng thái cho 3 switch
-    maxActionsCount: 6, // Ví dụ: 3 switch * 2 hành động/switch (Bật/Tắt)
-    minRealtimeConfigsCount: 0,        /* Số lượng tối thiểu giá trị hiện thời */
-    minHistoryConfigsCount: 0,         /* Số lượng tối thiểu giá trị lịch sử */
-    minActionsCount: 0,                /* Số lượng tối thiểu hành động */
-    // ... các thiết lập minCount khác giữ nguyên
-    
-    onConfiguration: (configuration) => {
-        // Ánh xạ realtime config cho từng switch (Giả sử config 0, 1, 2 lần lượt là sw1, sw2, sw3)
-        switches.forEach((id, index) => {
-            switchConfigs[id] = configuration.realtime_configs[index];
-            // Bạn cần logic để ánh xạ actions cụ thể cho từng switch nếu actions là chung
-            // Hiện tại: Giả sử hành động Bật/Tắt là chung cho cả 3 switch và được lưu trong configuration.actions
-        });
-        // Lưu toàn bộ actions (sẽ dùng chung nếu server không phân biệt action cho từng switch)
-        switchActions.all = configuration.actions; 
-    },
+    eraWidget.init({
+            needRealtimeConfigs: true,         /* Cần giá trị hiện thời */
+            needHistoryConfigs: true,          /* Cần giá trị lịch sử */
+            needActions: true,                 /* Cần các hành động (ví dụ Bật/Tắt đèn) */
+            maxRealtimeConfigsCount: 3,        /* Số lượng tối đa giá trị hiện thời */
+            maxHistoryConfigsCount: 1,         /* Số lượng tối đa giá trị lịch sử */
+            maxActionsCount: 2,                /* Số lượng tối đa các hành động có thể kích hoạt */
+            minRealtimeConfigsCount: 0,        /* Số lượng tối thiểu giá trị hiện thời */
+            minHistoryConfigsCount: 0,         /* Số lượng tối thiểu giá trị lịch sử */
+            minActionsCount: 0,                /* Số lượng tối thiểu hành động */
 
-    onValues: (values) => {
-        switches.forEach(id => {
-            const config = switchConfigs[id];
-            if (config && values[config.id]) {
-                const state = values[config.id].value;
-                if (switchStates[id] !== state) {
-                    switchStates[id] = state;
-                    updateSwitch(id, state); // Gửi cả ID của switch vào
+            /* Hàm callback được gọi khi có cấu hình được nhận từ server */
+            onConfiguration: (configuration) => {
+                /* Cập nhật cấu hình đèn LED từ cấu hình thời gian thực đầu tiên */
+                configLed = configuration.realtime_configs[0];
+                actions = configuration.actions; /* Lưu danh sách các hành động được nhận */
+            },
+
+            /* Hàm callback được gọi khi nhận giá trị mới từ server */
+            onValues: (values) => {
+                /* Lấy trạng thái hiện tại của đèn LED từ giá trị của cấu hình */
+                const stateLed = values[configLed.id].value;
+
+                /* Kiểm tra nếu trạng thái đèn thay đổi */
+                if (newStatusLed !== stateLed) {
+                    newStatusLed = stateLed;      /* Cập nhật trạng thái mới của đèn */
+                   updateSwitch(stateLed); /* Thay đổi trạng thái của switch dựa trên trạng thái đèn */
                 }
+            },
+        });
+function updateSwitch(state) {
+  const key = document.getElementById("sw1");
+  const label = document.getElementById("status-sw1");
+
+  if(state === 1){
+    key.classList.add("on");
+    label.textContent = "ON";
+  } else {
+    key.classList.remove("on");
+    label.textContent = "OFF";
+  }
+}
+   btn_sw1.addEventListener('click', () => {
+            if (newStatusLed === 1) {
+                eraWidget.triggerAction(actions[1]?.action, null); /* Kích hoạt hành động 'Tắt' */
+            } else {
+                eraWidget.triggerAction(actions[0]?.action, null); /* Kích hoạt hành động 'Bật' */
             }
         });
-    },
-});
-
-
-  
-// --- Hàm cập nhật giao diện (Quan trọng nhất) ---
-function updateSwitch(id, state) { // Thêm tham số id
-    const key = document.getElementById(id); // Lấy key tương ứng
-    const label = document.getElementById(`status-${id}`); // Lấy label tương ứng
-
-    if(state === 1){
-        key.classList.add("on");
-        label.textContent = "ON";
-    } else {
-        key.classList.remove("on");
-        label.textContent = "OFF";
-    }
-}
- 
-// --- Logic click cho từng nút ---
-
-// Hành động Bật/Tắt cần phải được ánh xạ đúng từ switchActions.all
-// Giả định actions[0] là Bật, actions[1] là Tắt cho tất cả.
-btn_sw1.addEventListener('click', () => {
-    const actionIndex = switchStates.sw1 === 1 ? 1 : 0; // 1: Tắt, 0: Bật
-    eraWidget.triggerAction(switchActions.all[actionIndex]?.action, null);
-});
-
-btn_sw2.addEventListener('click', () => {
-    const actionIndex = switchStates.sw2 === 1 ? 1 : 0; // 1: Tắt, 0: Bật
-    eraWidget.triggerAction(switchActions.all[actionIndex]?.action, null);
-});
-
-btn_sw3.addEventListener('click', () => {
-    const actionIndex = switchStates.sw3 === 1 ? 1 : 0; // 1: Tắt, 0: Bật
-    eraWidget.triggerAction(switchActions.all[actionIndex]?.action, null);
-});
-
-// ***LƯU Ý QUAN TRỌNG***
-// Nếu nền tảng của bạn gửi các hành động (actions) khác nhau cho mỗi switch, 
-// bạn cần điều chỉnh logic onConfiguration để lưu các action tương ứng với từng switch 
-// và sử dụng chúng trong sự kiện click.
-// (Ví dụ: switchActions[id].on và switchActions[id].off)
-
 
   
 </script>
